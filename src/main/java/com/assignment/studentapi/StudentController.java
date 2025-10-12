@@ -18,8 +18,8 @@ public class StudentController {
     @Autowired
     private StudentService studentService;
 
-    //@Value("${REPLICATE_API_TOKEN}")
-    private String replicateApiToken = "r8_EaGNfT1lVdL3XZ0V6WmDAxWjFjrXELg31YpMd";
+    @Value("${REPLICATE_API_TOKEN}")
+    private String replicateApiToken;
 
 
 
