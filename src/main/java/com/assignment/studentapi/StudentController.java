@@ -21,7 +21,10 @@ public class StudentController {
     @Value("${REPLICATE_API_TOKEN}")
     private String replicateApiToken;
 
-    // Creates a single student, checking for duplicates.
+    /**
+     * Creates a single new student.
+     * Returns 409 Conflict if a student with the same email already exists.
+     */
     @PostMapping
     public ResponseEntity<?> createStudent(@Valid @RequestBody Student student) {
         Optional<Student> createdStudentOpt = studentService.createStudent(student);
@@ -32,43 +35,58 @@ public class StudentController {
         }
     }
 
-    // Creates multiple students in a single batch request.
+    /**
+     * Creates multiple students in a single batch operation.
+     * Returns 207 Multi-Status with a body detailing successes and failures.
+     */
     @PostMapping("/batch")
     public ResponseEntity<BatchCreationResult> createMultipleStudents(@Valid @RequestBody List<Student> students) {
         BatchCreationResult result = studentService.createMultipleStudents(students);
         return ResponseEntity.status(HttpStatus.MULTI_STATUS).body(result);
     }
 
-    // Deletes multiple students in a single batch request.
+
     @DeleteMapping
     public ResponseEntity<BatchDeletionResult> deleteMultipleStudents(@RequestBody List<Integer> ids) {
         BatchDeletionResult result = studentService.deleteMultipleStudents(ids);
         return ResponseEntity.ok(result);
     }
 
+
+    /**
+     * Retrieves all students.
+     */
     @GetMapping
     public Collection<Student> getAllStudents() {
         return studentService.getAllStudents();
     }
 
+    /**
+     * Retrieves a single student by their ID.
+     */
     @GetMapping("/{id}")
     public ResponseEntity<Student> getStudentById(@PathVariable int id) {
         return studentService.getStudentById(id).map(ResponseEntity::ok).orElse(ResponseEntity.notFound().build());
     }
 
+    /**
+     * Updates a single student by their ID.
+     */
     @PutMapping("/{id}")
     public ResponseEntity<Student> updateStudent(@PathVariable int id, @Valid @RequestBody Student student) {
         return studentService.updateStudent(id, student).map(ResponseEntity::ok).orElse(ResponseEntity.notFound().build());
     }
 
+    /**
+     * Deletes a single student by their ID.
+     */
     @DeleteMapping("/{id}")
     public ResponseEntity<Void> deleteStudent(@PathVariable int id) {
         return studentService.deleteStudent(id) ? ResponseEntity.noContent().build() : ResponseEntity.notFound().build();
     }
 
     /**
-     * Generates a summary for a student using the Replicate cloud API.
-     * This version uses the corrected request format.
+     * FINAL VERSION: Generates a summary for a student using the correct Replicate cloud API endpoint.
      */
     @GetMapping("/{id}/summary")
     public ResponseEntity<?> getStudentSummary(@PathVariable int id) {
@@ -86,14 +104,16 @@ public class StudentController {
 
         try {
             RestTemplate restTemplate = new RestTemplate();
-            String replicateApiUrl = "https://api.replicate.com/v1/deployments/meta/meta-llama-3-8b-instruct/predictions";
+            // CORRECTED: Use the general /predictions endpoint
+            String replicateApiUrl = "https://api.replicate.com/v1/predictions";
 
             HttpHeaders headers = new HttpHeaders();
             headers.set("Authorization", "Token " + replicateApiToken);
             headers.set("Content-Type", "application/json");
 
-            // Create the request body using the corrected ReplicateRequest class (without 'version')
-            ReplicateRequest requestBody = new ReplicateRequest(Map.of("prompt", prompt));
+            // CORRECTED: Specify the model to run in the request body
+            String modelIdentifier = "meta/meta-llama-3-8b-instruct";
+            ReplicateRequest requestBody = new ReplicateRequest(modelIdentifier, Map.of("prompt", prompt));
 
             HttpEntity<ReplicateRequest> entity = new HttpEntity<>(requestBody, headers);
             ReplicateResponse response = restTemplate.postForObject(replicateApiUrl, entity, ReplicateResponse.class);

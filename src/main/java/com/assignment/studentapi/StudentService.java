@@ -55,12 +55,10 @@ public class StudentService {
 
 
     public BatchDeletionResult deleteMultipleStudents(List<Integer> idsToDelete) {
-        List<Integer> successfullyDeleted = new ArrayList<>();
-        List<Integer> failedToDelete = new ArrayList<>();
+        List<Integer> successfullyDeleted = new java.util.ArrayList<>();
+        List<Integer> failedToDelete = new java.util.ArrayList<>();
 
         for (Integer id : idsToDelete) {
-            // The remove() method returns the object if the key existed, or null otherwise.
-            // This is a perfect way to check if the deletion was successful.
             if (students.remove(id) != null) {
                 successfullyDeleted.add(id);
             } else {
