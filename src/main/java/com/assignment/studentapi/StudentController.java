@@ -6,8 +6,8 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.client.RestTemplate;
-
 import java.util.Collection;
+import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 
@@ -18,20 +18,38 @@ public class StudentController {
     @Autowired
     private StudentService studentService;
 
-    // POST /students - Create a new student
+    /**
+     * Creates a single new student.
+     * Returns 409 Conflict if a student with the same email already exists.
+     */
     @PostMapping
-    public ResponseEntity<Student> createStudent(@Valid @RequestBody Student student) {
-        Student createdStudent = studentService.createStudent(student);
-        return new ResponseEntity<>(createdStudent, HttpStatus.CREATED);
+    public ResponseEntity<?> createStudent(@Valid @RequestBody Student student) {
+        Optional<Student> createdStudentOpt = studentService.createStudent(student);
+
+        if (createdStudentOpt.isPresent()) {
+            return new ResponseEntity<>(createdStudentOpt.get(), HttpStatus.CREATED);
+        } else {
+            return ResponseEntity
+                    .status(HttpStatus.CONFLICT)
+                    .body(Map.of("error", "A student with this email already exists."));
+        }
     }
 
-    // GET /students - Get all students
+    /**
+     * Creates multiple students in a single batch operation.
+     * Returns 207 Multi-Status with a body detailing successes and failures.
+     */
+    @PostMapping("/batch")
+    public ResponseEntity<BatchCreationResult> createMultipleStudents(@Valid @RequestBody List<Student> students) {
+        BatchCreationResult result = studentService.createMultipleStudents(students);
+        return ResponseEntity.status(HttpStatus.MULTI_STATUS).body(result);
+    }
+
     @GetMapping
     public Collection<Student> getAllStudents() {
         return studentService.getAllStudents();
     }
 
-    // GET /students/{id} - Get a student by ID
     @GetMapping("/{id}")
     public ResponseEntity<Student> getStudentById(@PathVariable int id) {
         return studentService.getStudentById(id)
@@ -39,7 +57,6 @@ public class StudentController {
                 .orElse(ResponseEntity.notFound().build());
     }
 
-    // PUT /students/{id} - Update a student by ID
     @PutMapping("/{id}")
     public ResponseEntity<Student> updateStudent(@PathVariable int id, @Valid @RequestBody Student student) {
         return studentService.updateStudent(id, student)
@@ -47,7 +64,6 @@ public class StudentController {
                 .orElse(ResponseEntity.notFound().build());
     }
 
-    // DELETE /students/{id} - Delete a student by ID
     @DeleteMapping("/{id}")
     public ResponseEntity<Void> deleteStudent(@PathVariable int id) {
         if (studentService.deleteStudent(id)) {
@@ -57,7 +73,6 @@ public class StudentController {
         }
     }
 
-    // GET /students/{id}/summary - Generate summary using Ollama
     @GetMapping("/{id}/summary")
     public ResponseEntity<?> getStudentSummary(@PathVariable int id) {
         Optional<Student> studentOpt = studentService.getStudentById(id);
@@ -66,24 +81,18 @@ public class StudentController {
         }
         Student student = studentOpt.get();
 
-        // Prompt Engineering: Create a clear prompt for the AI
         String prompt = String.format(
-                "Generate a brief, one-paragraph professional summary for the following student profile. " +
-                        "Focus on their potential as a student or future professional. " +
-                        "Profile -> Name: %s, Age: %d, Email: %s",
-                student.getName(), student.getAge(), student.getEmail()
+                "Provide a brief, one-paragraph professional summary for a student with the following profile. " +
+                        "Focus on their potential. Profile -> Name: %s, Age: %d.",
+                student.getName(), student.getAge()
         );
 
         try {
             RestTemplate restTemplate = new RestTemplate();
             String ollamaApiUrl = "http://localhost:11434/api/generate";
-
             OllamaRequest request = new OllamaRequest("gemma:2b", prompt, false);
-
             OllamaResponse response = restTemplate.postForObject(ollamaApiUrl, request, OllamaResponse.class);
-
             return ResponseEntity.ok(Map.of("summary", response.response()));
-
         } catch (Exception e) {
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
                     .body(Map.of("error", "Failed to connect to Ollama service: " + e.getMessage()));
