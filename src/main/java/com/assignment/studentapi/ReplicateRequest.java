@@ -2,5 +2,5 @@ package com.assignment.studentapi;
 
 import java.util.Map;
 
-// Represents the JSON we send to Replicate
-public record ReplicateRequest(String version, Map<String, String> input) {}
+// Represents the simplified JSON we send to Replicate
+public record ReplicateRequest(Map<String, Object> input) {}

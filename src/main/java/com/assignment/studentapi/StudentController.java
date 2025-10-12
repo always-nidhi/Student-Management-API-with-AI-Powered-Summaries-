@@ -2,8 +2,8 @@ package com.assignment.studentapi;
 
 import jakarta.validation.Valid;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.beans.factory.annotation.Value; // Import this
-import org.springframework.http.*; // Import this
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.http.*;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.client.RestTemplate;
 import java.util.Collection;
@@ -18,11 +18,10 @@ public class StudentController {
     @Autowired
     private StudentService studentService;
 
-    // This annotation reads the secret key from the environment variable we set in Render
     @Value("${REPLICATE_API_TOKEN}")
     private String replicateApiToken;
 
-
+    // Creates a single student, checking for duplicates.
     @PostMapping
     public ResponseEntity<?> createStudent(@Valid @RequestBody Student student) {
         Optional<Student> createdStudentOpt = studentService.createStudent(student);
@@ -33,14 +32,24 @@ public class StudentController {
         }
     }
 
+    // Creates multiple students in a single batch request.
     @PostMapping("/batch")
     public ResponseEntity<BatchCreationResult> createMultipleStudents(@Valid @RequestBody List<Student> students) {
         BatchCreationResult result = studentService.createMultipleStudents(students);
         return ResponseEntity.status(HttpStatus.MULTI_STATUS).body(result);
     }
 
+    // Deletes multiple students in a single batch request.
+    @DeleteMapping
+    public ResponseEntity<BatchDeletionResult> deleteMultipleStudents(@RequestBody List<Integer> ids) {
+        BatchDeletionResult result = studentService.deleteMultipleStudents(ids);
+        return ResponseEntity.ok(result);
+    }
+
     @GetMapping
-    public Collection<Student> getAllStudents() { return studentService.getAllStudents(); }
+    public Collection<Student> getAllStudents() {
+        return studentService.getAllStudents();
+    }
 
     @GetMapping("/{id}")
     public ResponseEntity<Student> getStudentById(@PathVariable int id) {
@@ -57,9 +66,9 @@ public class StudentController {
         return studentService.deleteStudent(id) ? ResponseEntity.noContent().build() : ResponseEntity.notFound().build();
     }
 
-
     /**
-     * MODIFIED to call the Replicate cloud API instead of local Ollama.
+     * Generates a summary for a student using the Replicate cloud API.
+     * This version uses the corrected request format.
      */
     @GetMapping("/{id}/summary")
     public ResponseEntity<?> getStudentSummary(@PathVariable int id) {
@@ -77,29 +86,25 @@ public class StudentController {
 
         try {
             RestTemplate restTemplate = new RestTemplate();
-            // This is Replicate's API endpoint for Llama3-8B-Instruct
-            String replicateApiUrl = "https://api.replicate.com/v1/models/meta/meta-llama-3-8b-instruct/predictions";
+            String replicateApiUrl = "https://api.replicate.com/v1/deployments/meta/meta-llama-3-8b-instruct/predictions";
 
-            // Set up the authorization headers
             HttpHeaders headers = new HttpHeaders();
             headers.set("Authorization", "Token " + replicateApiToken);
             headers.set("Content-Type", "application/json");
 
-            // Create the request body in the format Replicate expects
-            // NOTE: The version hash might change over time. You can find the latest on Replicate's website.
-            String modelVersion = "f5a31d58143248f731818b76a75f87b8f04403b0d2fdcf11b22e176b653f563e";
-            ReplicateRequest requestBody = new ReplicateRequest(modelVersion, Map.of("prompt", prompt));
+            // Create the request body using the corrected ReplicateRequest class (without 'version')
+            ReplicateRequest requestBody = new ReplicateRequest(Map.of("prompt", prompt));
 
             HttpEntity<ReplicateRequest> entity = new HttpEntity<>(requestBody, headers);
-
-            // Make the API call
-            // NOTE: Replicate's API is asynchronous. This is a simplified call.
-            // A full production app would poll the "status" URL. For this assignment,
-            // we'll get an intermediate response. A better approach for sync would be to
-            // use a faster model/provider like Groq, but this demonstrates the principle.
             ReplicateResponse response = restTemplate.postForObject(replicateApiUrl, entity, ReplicateResponse.class);
 
-            // For now, let's return the status. A more complex client would poll the result URL.
+            // Clean up the response to provide a simple summary string
+            if (response != null && response.output() != null && !response.output().isEmpty()) {
+                String summary = String.join("", response.output());
+                return ResponseEntity.ok(Map.of("summary", summary));
+            }
+
+            // Fallback in case the output format is unexpected
             return ResponseEntity.ok(response);
 
         } catch (Exception e) {

@@ -15,24 +15,14 @@ public class StudentService {
     private final ConcurrentHashMap<Integer, Student> students = new ConcurrentHashMap<>();
     private final AtomicInteger idCounter = new AtomicInteger();
 
-    /**
-     * Checks if an email already exists in the student list (case-insensitive).
-     * @param email The email to check.
-     * @return true if the email exists, false otherwise.
-     */
     private boolean emailExists(String email) {
         return students.values().stream()
                 .anyMatch(student -> student.getEmail().equalsIgnoreCase(email));
     }
 
-    /**
-     * Creates a single new student if the email is not already in use.
-     * @param student The student object to create.
-     * @return An Optional containing the created student, or an empty Optional if the email already exists.
-     */
     public Optional<Student> createStudent(Student student) {
         if (emailExists(student.getEmail())) {
-            return Optional.empty(); // Email is a duplicate
+            return Optional.empty();
         }
         int newId = idCounter.incrementAndGet();
         student.setId(newId);
@@ -40,18 +30,11 @@ public class StudentService {
         return Optional.of(student);
     }
 
-    /**
-     * Attempts to create multiple students from a list.
-     * It processes the entire list and returns a result detailing successes and failures.
-     * @param newStudents A list of students to create.
-     * @return A BatchCreationResult object with lists of created and failed students.
-     */
     public BatchCreationResult createMultipleStudents(List<Student> newStudents) {
         List<Student> successfullyCreated = new ArrayList<>();
         List<Map<String, Object>> failedToCreate = new ArrayList<>();
 
         for (Student student : newStudents) {
-            // Check for duplicates in the main list AND within the current batch
             boolean isDuplicate = emailExists(student.getEmail()) ||
                     successfullyCreated.stream().anyMatch(s -> s.getEmail().equalsIgnoreCase(student.getEmail()));
 
@@ -68,6 +51,23 @@ public class StudentService {
             }
         }
         return new BatchCreationResult(successfullyCreated, failedToCreate);
+    }
+
+
+    public BatchDeletionResult deleteMultipleStudents(List<Integer> idsToDelete) {
+        List<Integer> successfullyDeleted = new ArrayList<>();
+        List<Integer> failedToDelete = new ArrayList<>();
+
+        for (Integer id : idsToDelete) {
+            // The remove() method returns the object if the key existed, or null otherwise.
+            // This is a perfect way to check if the deletion was successful.
+            if (students.remove(id) != null) {
+                successfullyDeleted.add(id);
+            } else {
+                failedToDelete.add(id);
+            }
+        }
+        return new BatchDeletionResult(successfullyDeleted, failedToDelete);
     }
 
     public Collection<Student> getAllStudents() {
