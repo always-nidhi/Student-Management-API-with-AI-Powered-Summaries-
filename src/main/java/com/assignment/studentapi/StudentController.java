@@ -18,8 +18,11 @@ public class StudentController {
     @Autowired
     private StudentService studentService;
 
-    @Value("${REPLICATE_API_TOKEN}")
-    private String replicateApiToken;
+    //@Value("${REPLICATE_API_TOKEN}")
+    private String replicateApiToken = "r8_EaGNfT1lVdL3XZ0V6WmDAxWjFjrXELg31YpMd";
+
+
+
 
     /**
      * Creates a single new student.
@@ -81,9 +84,16 @@ public class StudentController {
      * Deletes a single student by their ID.
      */
     @DeleteMapping("/{id}")
-    public ResponseEntity<Void> deleteStudent(@PathVariable int id) {
-        return studentService.deleteStudent(id) ? ResponseEntity.noContent().build() : ResponseEntity.notFound().build();
+    public ResponseEntity<Map<String, String>> deleteStudent(@PathVariable int id) {
+        String message = studentService.deleteStudent(id);
+
+        if (message.equals("Student deleted successfully.")) {
+            return ResponseEntity.ok(Map.of("message", message));
+        } else {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).body(Map.of("error", message));
+        }
     }
+
 
     /**
      * FINAL VERSION: Generates a summary for a student using the correct Replicate cloud API endpoint.
@@ -91,6 +101,8 @@ public class StudentController {
     @GetMapping("/{id}/summary")
     public ResponseEntity<?> getStudentSummary(@PathVariable int id) {
         Optional<Student> studentOpt = studentService.getStudentById(id);
+
+        System.out.println(replicateApiToken);
         if (studentOpt.isEmpty()) {
             return ResponseEntity.notFound().build();
         }

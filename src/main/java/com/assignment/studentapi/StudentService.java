@@ -85,7 +85,12 @@ public class StudentService {
         return Optional.of(updatedStudent);
     }
 
-    public boolean deleteStudent(int id) {
-        return students.remove(id) != null;
+    public String deleteStudent(int id) {
+        if (students.remove(id) != null) {
+            return "Student deleted successfully.";
+        } else {
+            return "Student does not exist.";
+        }
     }
+
 }
