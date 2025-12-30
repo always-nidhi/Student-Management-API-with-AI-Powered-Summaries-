@@ -1,4 +1,4 @@
-# Student CRUD REST API (Java & Spring Boot)
+# Student Management API with AI-Powered Summaries (Java, Spring Boot & Ollama)
 
 This project is a simple REST API for performing CRUD (Create, Read, Update, Delete) operations on a list of students. It is built with Java and the Spring Boot framework and includes an integration with Ollama to generate AI-powered summaries of student profiles.
 
